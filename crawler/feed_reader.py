@@ -1,5 +1,6 @@
 import feedparser
 import requests
+import cloudscraper
 import os
 import json
 from datetime import datetime, timedelta, timezone
@@ -51,8 +52,9 @@ def fetch_new_articles(sources: list) -> list:
             if source_type == 'substack' and substack_cookie:
                 headers['Cookie'] = substack_cookie
 
-            # Fetch the feed content
-            response = requests.get(url, headers=headers, timeout=20)
+            # Fetch the feed content using cloudscraper to bypass Cloudflare
+            scraper = cloudscraper.create_scraper()
+            response = scraper.get(url, headers=headers, timeout=20)
             response.raise_for_status()
 
             # Parse the feed

@@ -8,3 +8,4 @@ tenacity
 jsonschema
 python-dotenv
 lxml
+cloudscraper
