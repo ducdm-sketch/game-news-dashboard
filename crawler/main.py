@@ -79,6 +79,17 @@ def run_crawler():
             
             try:
                 # a. Extract Article
+                # Check if this URL already exists in DB (seen_articles.json may be stale)
+                try:
+                    existing = supabase.table("articles").select("id").eq("original_url", url).maybe_single().execute()
+                    if existing.data:
+                        print(f"Skipping {url}: Already exists in database.")
+                        mark_seen(url)
+                        sources_succeeded.add(source_name)
+                        continue
+                except Exception:
+                    pass  # proceed with processing if check fails
+
                 extracted = extract_article(url, source_name, substack_cookie)
                 if not extracted:
                     print(f"Skipping {url}: Extraction failed.")
@@ -131,8 +142,8 @@ def run_crawler():
                     db_article["key_takeaways"] = ai_data.get("key_takeaways", [])
                     db_article["entities_mentioned"] = ai_data.get("entities", {})
                 
-                # g. Save Article to Supabase
-                supabase.table("articles").insert(db_article).execute()
+                # g. Save Article to Supabase (upsert to handle any race conditions)
+                supabase.table("articles").upsert(db_article, on_conflict="original_url").execute()
                 
                 # h. Save Blocks to Supabase
                 db_blocks = []

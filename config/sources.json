@@ -3,36 +3,41 @@
     "name": "Naavik",
     "url": "https://naavik.co/feed",
     "type": "rss",
-    "tags": ["Industry Analysis"]
+    "tags": [
+      "Industry Analysis"
+    ]
   },
   {
     "name": "PocketGamer",
     "url": "https://www.pocketgamer.com/rss/",
     "type": "rss",
-    "tags": ["Mobile News"]
+    "tags": [
+      "Mobile News"
+    ]
   },
   {
     "name": "Gamigion",
     "url": "https://gamigion.com/feed/",
     "type": "rss",
-    "tags": ["Hyper-Casual", "Hybrid-Casual"]
-  },
-  {
-    "name": "Deconstructor of Fun",
-    "url": "https://www.deconstructoroffun.com/blog?format=rss",
-    "type": "rss",
-    "tags": ["Game Deconstructions"]
+    "tags": [
+      "Hyper-Casual",
+      "Hybrid-Casual"
+    ]
   },
   {
     "name": "Mobilegamer.biz",
     "url": "https://mobilegamer.biz/feed/",
     "type": "rss",
-    "tags": ["Business News"]
+    "tags": [
+      "Business News"
+    ]
   },
   {
     "name": "GameRefinery Blog",
     "url": "https://www.gamerefinery.com/feed/",
     "type": "rss",
-    "tags": ["Feature Analysis"]
+    "tags": [
+      "Feature Analysis"
+    ]
   }
 ]
