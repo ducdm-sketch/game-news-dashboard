@@ -59,7 +59,7 @@ def _check_supabase_cache(article_id: str) -> bool:
         response = supabase.table("articles") \
             .select("ai_summary") \
             .eq("id", article_id) \
-            .single() \
+            .maybe_single() \
             .execute()
         data = response.data
         if data and data.get("ai_summary"):
