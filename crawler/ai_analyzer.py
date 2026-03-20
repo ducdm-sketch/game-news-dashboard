@@ -18,15 +18,12 @@ VALID_GENRE_TAGS = {
     "Monetization", "Market Data", "Game Design", "Industry News", "Business"
 }
 
-SYSTEM_PROMPT = """You are an analyst for a mobile game development team focused on casual, hyper-casual, hybrid-casual, and puzzle games. Analyze the provided article and return a JSON object with exactly these fields:
-- summary: one sentence summarizing the article
-- key_takeaways: an array of exactly 3 strings, each being a key insight for a mobile game developer
-- entities: an object with three arrays: games (game titles mentioned), studios (company names mentioned), metrics (any numeric metrics mentioned e.g. D7 retention 22%, CPI $1.40)
-- sentiment: exactly one of Bullish, Bearish, or Neutral — representing the overall outlook on the mobile gaming genre or topic covered
-- genre_tags: an array of relevant tags from this list only: Hyper-Casual, Hybrid-Casual, Casual, Puzzle, UA, Monetization, Market Data, Game Design, Industry News, Business
-
-Return ONLY valid JSON.
-"""
+SYSTEM_PROMPT = """You are a senior analyst for a mobile game development studio. Your job is to extract factual information ONLY from the article provided. You must follow these strict rules:
+- NEVER invent, infer, or assume any facts not explicitly stated in the article text
+- If a field cannot be filled from the article text, use an empty array [] or the string 'Not specified'
+- Do NOT pad key_takeaways with generic advice — only include insights directly supported by the article
+- Sentiment must reflect the article's actual tone toward mobile gaming, not your own opinion
+- genre_tags must only use tags that genuinely apply to the article content"""
 
 def _get_call_count() -> int:
     """Reads the current AI call count from the tmp file."""
@@ -126,7 +123,24 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
         # 4. Build and send prompt
         # Truncate full_text to avoid token limit issues
         truncated_text = full_text[:12000] if len(full_text) > 12000 else full_text
-        user_message = f"Article Title: {title}\n\nArticle Text:\n{truncated_text}"
+        user_message = f"""Analyze the following article and return a JSON object with exactly these fields:
+
+- summary: One sentence. Must include the WHO (company/game), WHAT (the key event or finding), and WHY it matters. Use only facts from the article.
+
+- key_takeaways: Array of exactly 3 strings. Each must be a specific, actionable insight for a mobile game developer. Each must cite a specific fact, number, or example from the article. Never write generic advice.
+
+- entities: Object with three arrays:
+  - games: exact game titles mentioned in the article
+  - studios: exact company or studio names mentioned
+  - metrics: exact numeric data mentioned (e.g. 'D7 retention 34%', 'CPI $1.20', 'DAU 2.3M') — copy the numbers exactly as written
+
+- sentiment: Exactly one of Bullish, Bearish, or Neutral based on the article's overall outlook on the mobile gaming market or topic covered.
+
+- genre_tags: Array using only these tags where genuinely applicable: Hyper-Casual, Hybrid-Casual, Casual, Puzzle, UA, Monetization, Market Data, Game Design, Industry News, Business
+
+Article title: {title}
+Article text:
+{truncated_text}"""
 
         _increment_call_count()
         chat_completion = client.chat.completions.create(
