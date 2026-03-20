@@ -120,6 +120,7 @@ def run_crawler():
                     "source_name": source_name,
                     "original_url": url,
                     "cover_image_url": r2_cover_url,
+                    "published_date": article.get('published_date'),
                     "crawled_date": datetime.utcnow().isoformat()
                 }
                 
