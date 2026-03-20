@@ -183,7 +183,7 @@ def run_crawler():
             "sources_succeeded": list(sources_succeeded),
             "sources_failed": list(sources_failed),
             "gemini_calls_used": gemini_calls,
-            "errors": warnings
+            "error_log": warnings
         }
         
         try:
