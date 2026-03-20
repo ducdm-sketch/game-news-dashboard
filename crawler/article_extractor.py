@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import cloudscraper
 import uuid
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
@@ -47,7 +48,9 @@ def fetch_html(url, substack_cookie=None):
                 if len(parts) == 2:
                     cookies[parts[0]] = parts[1]
     
-    response = requests.get(url, headers=headers, cookies=cookies, timeout=20)
+    # Use cloudscraper to bypass Cloudflare challenges
+    scraper = cloudscraper.create_scraper()
+    response = scraper.get(url, headers=headers, cookies=cookies, timeout=20)
     response.raise_for_status()
     return response.text
 
