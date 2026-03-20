@@ -134,7 +134,7 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
 
         _increment_call_count()
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt
         )
 
