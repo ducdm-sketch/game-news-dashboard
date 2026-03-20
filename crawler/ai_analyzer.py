@@ -1,7 +1,7 @@
 import os
 import json
 import re
-from google import genai
+from groq import Groq
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -9,8 +9,8 @@ from supabase import create_client, Client
 load_dotenv()
 
 # Configuration
-GEMINI_CALL_COUNT_FILE = os.path.join(os.getcwd(), "tmp", "gemini_call_count.txt")
-MAX_GEMINI_CALLS = 50
+AI_CALL_COUNT_FILE = os.path.join(os.getcwd(), "tmp", "ai_call_count.txt")
+MAX_AI_CALLS = 50
 REQUIRED_FIELDS = {"summary", "key_takeaways", "entities", "sentiment", "genre_tags"}
 VALID_SENTIMENTS = {"Bullish", "Bearish", "Neutral"}
 VALID_GENRE_TAGS = {
@@ -18,33 +18,29 @@ VALID_GENRE_TAGS = {
     "Monetization", "Market Data", "Game Design", "Industry News", "Business"
 }
 
-GEMINI_PROMPT_TEMPLATE = """You are an analyst for a mobile game development team focused on casual, hyper-casual, hybrid-casual, and puzzle games. Analyze the following article and return a JSON object with exactly these fields:
+SYSTEM_PROMPT = """You are an analyst for a mobile game development team focused on casual, hyper-casual, hybrid-casual, and puzzle games. Analyze the provided article and return a JSON object with exactly these fields:
 - summary: one sentence summarizing the article
 - key_takeaways: an array of exactly 3 strings, each being a key insight for a mobile game developer
 - entities: an object with three arrays: games (game titles mentioned), studios (company names mentioned), metrics (any numeric metrics mentioned e.g. D7 retention 22%, CPI $1.40)
 - sentiment: exactly one of Bullish, Bearish, or Neutral — representing the overall outlook on the mobile gaming genre or topic covered
 - genre_tags: an array of relevant tags from this list only: Hyper-Casual, Hybrid-Casual, Casual, Puzzle, UA, Monetization, Market Data, Game Design, Industry News, Business
 
-Return ONLY valid JSON, no markdown code blocks, no preamble.
-
-Article Title: {title}
-
-Article Text:
-{full_text}"""
+Return ONLY valid JSON.
+"""
 
 def _get_call_count() -> int:
-    """Reads the current Gemini call count from the tmp file."""
-    os.makedirs(os.path.dirname(GEMINI_CALL_COUNT_FILE), exist_ok=True)
+    """Reads the current AI call count from the tmp file."""
+    os.makedirs(os.path.dirname(AI_CALL_COUNT_FILE), exist_ok=True)
     try:
-        with open(GEMINI_CALL_COUNT_FILE, 'r') as f:
+        with open(AI_CALL_COUNT_FILE, 'r') as f:
             return int(f.read().strip())
     except (FileNotFoundError, ValueError):
         return 0
 
 def _increment_call_count():
-    """Increments the Gemini call count in the tmp file."""
+    """Increments the AI call count in the tmp file."""
     count = _get_call_count() + 1
-    with open(GEMINI_CALL_COUNT_FILE, 'w') as f:
+    with open(AI_CALL_COUNT_FILE, 'w') as f:
         f.write(str(count))
     return count
 
@@ -68,8 +64,8 @@ def _check_supabase_cache(article_id: str) -> bool:
         print(f"Cache check failed (proceeding without cache): {e}")
     return False
 
-def _parse_gemini_response(raw_text: str) -> dict | None:
-    """Strictly parses and validates the JSON response from Gemini."""
+def _parse_ai_response(raw_text: str) -> dict | None:
+    """Strictly parses and validates the JSON response from the AI."""
     # Strip potential markdown code blocks
     text = raw_text.strip()
     text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.IGNORECASE)
@@ -78,13 +74,13 @@ def _parse_gemini_response(raw_text: str) -> dict | None:
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError as e:
-        print(f"Gemini JSON parse error: {e}\nRaw response: {raw_text[:300]}")
+        print(f"AI JSON parse error: {e}\nRaw response: {raw_text[:300]}")
         return None
 
     # Check all required fields are present
     missing = REQUIRED_FIELDS - set(parsed.keys())
     if missing:
-        print(f"Gemini response missing required fields: {missing}")
+        print(f"AI response missing required fields: {missing}")
         return None
 
     # Validate sentiment
@@ -104,43 +100,53 @@ def _parse_gemini_response(raw_text: str) -> dict | None:
 
 def analyze_article(article_id: str, title: str, full_text: str, image_paths: list = None) -> dict:
     """
-    Sends article content to Gemini for analysis and returns structured insights.
+    Sends article content to Groq for analysis and returns structured insights.
     Returns None on cache hit, cap exceeded, parse error, or any failure.
     """
     try:
         # 1. Check Supabase cache
         if _check_supabase_cache(article_id):
-            print(f"Cache hit for article {article_id}. Skipping Gemini call.")
+            print(f"Cache hit for article {article_id}. Skipping AI call.")
             return None
 
         # 2. Check API call cap
         current_count = _get_call_count()
-        if current_count >= MAX_GEMINI_CALLS:
-            print(f"Warning: Gemini API call cap ({MAX_GEMINI_CALLS}) reached for this run. Skipping.")
+        if current_count >= MAX_AI_CALLS:
+            print(f"Warning: AI API call cap ({MAX_AI_CALLS}) reached for this run. Skipping.")
             return None
 
-        # 3. Configure Gemini
-        api_key = os.getenv("GEMINI_API_KEY")
+        # 3. Configure Groq
+        api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            print("Error: GEMINI_API_KEY environment variable is not set.")
+            print("Error: GROQ_API_KEY environment variable is not set.")
             return None
 
-        client = genai.Client(api_key=api_key)
+        client = Groq(api_key=api_key)
 
         # 4. Build and send prompt
-        # Truncate full_text to avoid token limit issues (~12k chars ≈ ~3k tokens)
+        # Truncate full_text to avoid token limit issues
         truncated_text = full_text[:12000] if len(full_text) > 12000 else full_text
-        prompt = GEMINI_PROMPT_TEMPLATE.format(title=title, full_text=truncated_text)
+        user_message = f"Article Title: {title}\n\nArticle Text:\n{truncated_text}"
 
         _increment_call_count()
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": user_message,
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            response_format={"type": "json_object"},
         )
 
         # 5. Parse and validate response
-        raw_text = response.text
-        result = _parse_gemini_response(raw_text)
+        raw_text = chat_completion.choices[0].message.content
+        result = _parse_ai_response(raw_text)
 
         if result is None:
             return None
@@ -154,7 +160,7 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
 if __name__ == "__main__":
     # Reset call count for test
     os.makedirs("tmp", exist_ok=True)
-    with open(GEMINI_CALL_COUNT_FILE, 'w') as f:
+    with open(AI_CALL_COUNT_FILE, 'w') as f:
         f.write("0")
 
     sample_title = "Why Hybrid-Casual Is the Future of Mobile Gaming"
@@ -168,7 +174,7 @@ if __name__ == "__main__":
     demonstrate that the sweet spot is accessible gameplay married to aspirational progression.
     """
 
-    print("Testing Gemini analysis...")
+    print("Testing Groq analysis...")
     result = analyze_article("test-article-001", sample_title, sample_text)
     if result:
         print(f"\nSentiment: {result['sentiment']}")
