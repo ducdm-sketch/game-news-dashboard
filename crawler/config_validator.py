@@ -2,29 +2,32 @@ import json
 import os
 from jsonschema import validate, ValidationError
 
-# Define the schema strictly as requested
+# Schema for a single source object
+SOURCE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "url": {"type": "string"},
+        "type": {"enum": ["rss", "substack", "scrape"]},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "css_selector": {"type": "string"}
+    },
+    "required": ["name", "url", "type", "tags"],
+    "if": {
+        "properties": {"type": {"const": "scrape"}}
+    },
+    "then": {
+        "required": ["css_selector"]
+    },
+    "else": {
+        "not": {"required": ["css_selector"]}
+    }
+}
+
+# Schema for the entire sources list
 SCHEMA = {
     "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "name": {"type": "string"},
-            "url": {"type": "string"},
-            "type": {"enum": ["rss", "substack", "scrape"]},
-            "tags": {"type": "array", "items": {"type": "string"}},
-            "css_selector": {"type": "string"}
-        },
-        "required": ["name", "url", "type", "tags"],
-        "if": {
-            "properties": {"type": {"const": "scrape"}}
-        },
-        "then": {
-            "required": ["css_selector"]
-        },
-        "else": {
-            "not": {"required": ["css_selector"]}
-        }
-    }
+    "items": SOURCE_SCHEMA
 }
 
 def validate_sources(config_path=None):
