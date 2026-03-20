@@ -185,16 +185,16 @@ def run_crawler():
 
         # 5. CRAWL RUN LOG
         try:
-            gemini_calls = _get_call_count()
+            ai_calls = _get_call_count()
         except:
-            gemini_calls = 0
+            ai_calls = 0
             
         run_log = {
             "run_timestamp": run_timestamp,
             "articles_found": len(successfully_processed),
             "sources_succeeded": list(sources_succeeded),
             "sources_failed": list(sources_failed),
-            "gemini_calls_used": gemini_calls,
+            "gemini_calls_used": ai_calls,  # Sticking to expected schema name
             "error_log": warnings
         }
         
@@ -210,7 +210,7 @@ def run_crawler():
             sources_succeeded=list(sources_succeeded),
             sources_failed=list(sources_failed),
             articles_found=len(successfully_processed),
-            gemini_calls=gemini_calls,
+            gemini_calls=ai_calls,
             warnings=warnings
         )
         
