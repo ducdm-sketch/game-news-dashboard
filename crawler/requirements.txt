@@ -1,0 +1,10 @@
+supabase
+google-genai
+boto3
+requests
+feedparser
+beautifulsoup4
+tenacity
+jsonschema
+python-dotenv
+lxml
