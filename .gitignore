@@ -12,3 +12,9 @@ env/
 # Project session data
 tmp/
 crawler/seen_articles.json
+
+# Next.js Dashboard
+dashboard/node_modules/
+dashboard/.next/
+dashboard/.env.local
+dashboard/next-env.d.ts
