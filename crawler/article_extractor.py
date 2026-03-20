@@ -23,7 +23,10 @@ if not os.path.exists(TEMP_IMAGE_DIR):
 def fetch_html(url, substack_cookie=None):
     """Fetches HTML with retries and optional cookies."""
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
     }
     cookies = {}
     if substack_cookie:
@@ -85,9 +88,30 @@ def extract_article(url: str, source_name: str, substack_cookie: str = None) -> 
             tag.decompose()
             
         # Remove elements with noise-related class names
-        noise_keywords = ["ad", "sidebar", "related", "newsletter", "subscribe", "comment"]
-        for tag in soup.find_all(class_=lambda x: x and any(kw in x.lower() for kw in noise_keywords)):
-            tag.decompose()
+        noise_keywords = ["ad", "advertisement", "sidebar", "related", "newsletter", "subscribe", "comment"]
+        for tag in soup.find_all(class_=True):
+            if tag.name in ['body', 'html', 'main']:
+                continue
+            if not getattr(tag, 'attrs', None):
+                continue
+            classes = tag.get('class', [])
+            if not isinstance(classes, list):
+                classes = [classes]
+                
+            is_noise = False
+            for cls in classes:
+                cls_lower = cls.lower()
+                # Exact matches or prefix/suffix for 'ad' to avoid matching 'kadence' or 'thread'
+                if cls_lower in ['ad', 'ads', 'advert'] or cls_lower.startswith('ad-') or cls_lower.endswith('-ad') or cls_lower.startswith('advertisement'):
+                    is_noise = True
+                    break
+                # Other keywords can be substrings
+                if any(kw in cls_lower for kw in ["sidebar", "related", "newsletter", "subscribe", "comment"]):
+                    is_noise = True
+                    break
+            
+            if is_noise:
+                tag.decompose()
 
         # 4. Content Block Extraction
         blocks = []
@@ -150,6 +174,8 @@ def extract_article(url: str, source_name: str, substack_cookie: str = None) -> 
         }
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error extracting article from {url}: {e}")
         return None
 
