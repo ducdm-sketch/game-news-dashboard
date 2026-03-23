@@ -16,8 +16,6 @@ export default function DashboardPage() {
 
   const [filters, setFilters] = useState({
     source: 'All',
-    sentiment: 'All',
-    tag: 'All',
     dateFrom: '',
     dateTo: '',
   });
@@ -36,13 +34,9 @@ export default function DashboardPage() {
           setArticles(data);
           setFilteredArticles(data);
           
-          // Extract unique sources and tags for filter dropdowns
+          // Extract unique sources for filter dropdown
           const uniqueSources = Array.from(new Set(data.map((a: any) => a.source_name))).sort();
           setSources(uniqueSources);
-          
-          const allTags = data.flatMap((a: any) => a.genre_tags || []);
-          const uniqueTags = Array.from(new Set(allTags)).sort();
-          setTags(uniqueTags as string[]);
         }
       } catch (err) {
         console.error('Error fetching articles:', err);
@@ -61,13 +55,6 @@ export default function DashboardPage() {
       result = result.filter(a => a.source_name === filters.source);
     }
 
-    if (filters.sentiment !== 'All') {
-      result = result.filter(a => a.sentiment?.toLowerCase() === filters.sentiment.toLowerCase());
-    }
-
-    if (filters.tag !== 'All') {
-      result = result.filter(a => a.genre_tags?.includes(filters.tag));
-    }
 
     if (filters.dateFrom) {
       result = result.filter(a => new Date(a.crawled_date) >= new Date(filters.dateFrom));
@@ -93,12 +80,12 @@ export default function DashboardPage() {
             <Newspaper className="text-white w-6 h-6" />
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight">
-            Game News <span className="text-blue-500 underline decoration-blue-500/30 underline-offset-8">Intelligence</span>
+            Game News <span className="text-blue-500 underline decoration-blue-500/30 underline-offset-8">Tracker</span>
           </h1>
         </div>
         <p className="text-gray-400 max-w-2xl leading-relaxed">
-          Real-time AI analysis of the mobile gaming market. Stay ahead with automated sentiment tracking, 
-          key takeaway extraction, and genre categorization across all major industry sources.
+          Real-time discovery of the mobile gaming market. Stay ahead with 
+          centralized coverage across all major industry sources.
         </p>
       </header>
 
@@ -111,13 +98,6 @@ export default function DashboardPage() {
           </div>
           <Search className="text-blue-500 w-8 h-8 opacity-20" />
         </div>
-        <div className="bg-[#111] border border-green-500/20 p-6 rounded-2xl flex items-center justify-between">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest font-black text-gray-500 mb-1">Market Sentiment</div>
-            <div className="text-2xl font-bold text-green-500">Bullish <span className="text-sm font-medium text-gray-400 hover:text-green-400 transition-colors">(72%)</span></div>
-          </div>
-          <TrendingUp className="text-green-500 w-8 h-8 opacity-20" />
-        </div>
         <div className="bg-[#111] border border-orange-500/20 p-6 rounded-2xl flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-widest font-black text-gray-500 mb-1">Active Sources</div>
@@ -129,7 +109,6 @@ export default function DashboardPage() {
 
       <FilterBar 
         sources={sources} 
-        tags={tags} 
         activeFilters={filters} 
         onFilterChange={handleFilterChange} 
       />
@@ -142,9 +121,15 @@ export default function DashboardPage() {
       ) : filteredArticles.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {filteredArticles.map((article) => (
-            <Link key={article.id} href={`/article/${article.id}`}>
+            <a 
+              key={article.id} 
+              href={article.original_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block"
+            >
               <ArticleCard article={article} />
-            </Link>
+            </a>
           ))}
         </div>
       ) : (

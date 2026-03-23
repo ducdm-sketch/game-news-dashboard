@@ -30,44 +30,24 @@ def send_digest(articles: list) -> None:
         }
         requests.post(webhook_url, json=summary_payload, timeout=15)
         
-        # 2. Mapping for visual flair
-        sentiment_map = {
-            "Bullish": {"emoji": "🟢", "color": 3066993},  # Green
-            "Bearish": {"emoji": "🔴", "color": 15158332}, # Red
-            "Neutral": {"emoji": "⚪", "color": 10197915}  # Gray/Silver
-        }
-
-        # 3. Send one embed per article
+        # 2. Send one embed per article
         for article in articles:
             article_id = article.get("id", "unknown")
             title = article.get("title", "Untitled")
             source = article.get("source_name", "Unknown Source")
             url = article.get("original_url", "#")
             summary = article.get("ai_summary", "No summary provided.")
-            sentiment = article.get("sentiment", "Neutral")
             tags = article.get("genre_tags", [])
             
-            # Link title to the dashboard page
-            article_link = f"{dashboard_url}/article/{article_id}"
-            
-            s_config = sentiment_map.get(sentiment, sentiment_map["Neutral"])
+            # Link title directly to the original article
+            article_link = url
             
             embed = {
                 "title": title,
                 "url": article_link,
-                "description": f"**Source:** {source} | {s_config['emoji']} **{sentiment}**",
-                "color": s_config["color"],
-                "fields": [
-                    {
-                        "name": "Summary",
-                        "value": summary[:1020] + "..." if len(summary) > 1024 else summary
-                    },
-                    {
-                        "name": "Tags",
-                        "value": ", ".join(tags) if tags else "None",
-                        "inline": True
-                    }
-                ],
+                "description": f"**Source:** {source}",
+                "color": 3447003, # Deep Blue
+                "fields": [],
                 "footer": {
                     "text": f"Original: {url}"
                 }
@@ -126,7 +106,6 @@ def send_status_report(sources_succeeded: list, sources_failed: list, articles_f
             "color": color,
             "fields": [
                 {"name": "Articles Found", "value": str(articles_found), "inline": True},
-                {"name": "Gemini Calls", "value": str(gemini_calls), "inline": True},
                 {"name": "Sources Succeeded", "value": str(len(sources_succeeded)), "inline": True},
             ],
             "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
