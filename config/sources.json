@@ -17,6 +17,15 @@
     ]
   },
   {
+	  "name": "NextBigGames",
+	  "url": "https://nextbiggames.com/feed/",
+	  "type": "rss",
+	  "tags": [
+		"Hybrid-Casual",
+		"Hyper-Casual"
+	]
+  },
+  {
     "name": "Mobilegamer.biz",
     "url": "https://mobilegamer.biz/feed/",
     "type": "rss",
