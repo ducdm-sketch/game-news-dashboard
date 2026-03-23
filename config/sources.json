@@ -8,14 +8,6 @@
     ]
   },
   {
-    "name": "PocketGamer",
-    "url": "https://www.pocketgamer.com/rss/",
-    "type": "rss",
-    "tags": [
-      "Mobile News"
-    ]
-  },
-  {
     "name": "Gamigion",
     "url": "https://www.gamigion.com/feed/",
     "type": "rss",
@@ -30,14 +22,6 @@
     "type": "rss",
     "tags": [
       "Business News"
-    ]
-  },
-  {
-    "name": "GameRefinery Blog",
-    "url": "https://www.gamerefinery.com/feed/",
-    "type": "rss",
-    "tags": [
-      "Feature Analysis"
     ]
   }
 ]
