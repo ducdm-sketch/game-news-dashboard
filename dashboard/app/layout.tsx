@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Game news Dashboard",
-  description: "AI-powered gaming news and sentiment analysis",
+  description: "AI-powered gaming news and market intelligence",
 };
 
 export default function RootLayout({

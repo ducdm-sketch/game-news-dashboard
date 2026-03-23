@@ -37,11 +37,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     .eq('article_id', id)
     .order('position', { ascending: true });
 
-  const sentimentEmoji = {
-    bullish: '🟢 Bullish',
-    bearish: '🔴 Bearish',
-    neutral: '⚪ Neutral',
-  }[article.sentiment?.toLowerCase() || 'neutral'] || '⚪ Neutral';
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] pb-24">
@@ -64,11 +59,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             {article.title}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <span className="flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-gray-600" />
-              {sentimentEmoji}
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-800" />
             <div className="flex gap-2">
               {article.genre_tags?.map((tag: string) => (
                 <span key={tag} className="px-2 py-0.5 rounded bg-white/5 text-[10px] font-bold uppercase tracking-wider text-blue-400 border border-blue-400/10">
@@ -82,7 +72,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         {/* AI Analysis Block */}
         <section className="bg-white rounded-3xl p-8 mb-16 shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <TrendingUp className="w-24 h-24 text-blue-900" />
+            <BookOpen className="w-24 h-24 text-blue-900" />
           </div>
           
           <div className="flex items-center gap-2 mb-8">

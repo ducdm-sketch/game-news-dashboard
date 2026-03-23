@@ -47,7 +47,6 @@ def setup_articles_table():
         original_url text not null unique,
         cover_image_url text,
         ai_summary text,
-        sentiment text check (sentiment in ('Bullish', 'Bearish', 'Neutral')),
         genre_tags text[],
         key_takeaways text[],
         entities_mentioned jsonb,

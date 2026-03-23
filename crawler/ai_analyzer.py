@@ -11,8 +11,7 @@ load_dotenv()
 # Configuration
 AI_CALL_COUNT_FILE = os.path.join(os.getcwd(), "tmp", "ai_call_count.txt")
 MAX_AI_CALLS = 50
-REQUIRED_FIELDS = {"summary", "key_takeaways", "entities", "sentiment", "genre_tags"}
-VALID_SENTIMENTS = {"Bullish", "Bearish", "Neutral"}
+REQUIRED_FIELDS = {"summary", "key_takeaways", "entities", "genre_tags"}
 VALID_GENRE_TAGS = {
     "Hyper-Casual", "Hybrid-Casual", "Casual", "Puzzle", "UA",
     "Monetization", "Market Data", "Game Design", "Industry News", "Business"
@@ -22,7 +21,6 @@ SYSTEM_PROMPT = """You are a senior analyst for a mobile game development studio
 - NEVER invent, infer, or assume any facts not explicitly stated in the article text
 - If a field cannot be filled from the article text, use an empty array [] or the string 'Not specified'
 - Do NOT pad key_takeaways with generic advice — only include insights directly supported by the article
-- Sentiment must reflect the article's actual tone toward mobile gaming, not your own opinion
 - genre_tags must only use tags that genuinely apply to the article content"""
 
 def _get_call_count() -> int:
@@ -80,11 +78,6 @@ def _parse_ai_response(raw_text: str) -> dict | None:
         print(f"AI response missing required fields: {missing}")
         return None
 
-    # Validate sentiment
-    if parsed.get("sentiment") not in VALID_SENTIMENTS:
-        print(f"Invalid sentiment value: {parsed.get('sentiment')}")
-        return None
-
     # Validate key_takeaways has exactly 3 items
     if not isinstance(parsed.get("key_takeaways"), list) or len(parsed["key_takeaways"]) != 3:
         print(f"key_takeaways must be a list of exactly 3 items.")
@@ -115,7 +108,7 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
         # 3. Configure Groq
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            print("Error: GROQ_API_KEY environment variable is not set.")
+            print("ERROR: GROQ_API_KEY is not set. If running in GitHub Actions, ensure you have added it to Repository Secrets.")
             return None
 
         client = Groq(api_key=api_key)
@@ -133,8 +126,6 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
   - games: exact game titles mentioned in the article
   - studios: exact company or studio names mentioned
   - metrics: exact numeric data mentioned (e.g. 'D7 retention 34%', 'CPI $1.20', 'DAU 2.3M') — copy the numbers exactly as written
-
-- sentiment: Exactly one of Bullish, Bearish, or Neutral based on the article's overall outlook on the mobile gaming market or topic covered.
 
 - genre_tags: Array using only these tags where genuinely applicable: Hyper-Casual, Hybrid-Casual, Casual, Puzzle, UA, Monetization, Market Data, Game Design, Industry News, Business
 
@@ -191,7 +182,6 @@ if __name__ == "__main__":
     print("Testing Groq analysis...")
     result = analyze_article("test-article-001", sample_title, sample_text)
     if result:
-        print(f"\nSentiment: {result['sentiment']}")
         print(f"Summary: {result['summary']}")
         print(f"Key Takeaways: {result['key_takeaways']}")
         print(f"Genre Tags: {result['genre_tags']}")

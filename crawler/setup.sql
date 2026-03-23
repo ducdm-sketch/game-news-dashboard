@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS articles (
     original_url text NOT NULL UNIQUE,
     cover_image_url text,
     ai_summary text,
-    sentiment text CHECK (sentiment IN ('Bullish', 'Bearish', 'Neutral')),
     genre_tags text[],
     key_takeaways text[],
     entities_mentioned jsonb,
