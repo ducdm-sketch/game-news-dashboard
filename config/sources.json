@@ -24,13 +24,5 @@
 		"Hybrid-Casual",
 		"Hyper-Casual"
 	]
-  },
-  {
-    "name": "Mobilegamer.biz",
-    "url": "https://mobilegamer.biz/feed/",
-    "type": "rss",
-    "tags": [
-      "Business News"
-    ]
   }
 ]
