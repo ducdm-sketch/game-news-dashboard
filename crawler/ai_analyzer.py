@@ -1,7 +1,7 @@
 import os
 import json
 import re
-from groq import Groq
+from openai import OpenAI
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -105,13 +105,13 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
             print(f"Warning: AI API call cap ({MAX_AI_CALLS}) reached for this run. Skipping.")
             return None
 
-        # 3. Configure Groq
-        api_key = os.getenv("GROQ_API_KEY")
+        # 3. Configure OpenAI
+        api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            print("ERROR: GROQ_API_KEY is not set. If running in GitHub Actions, ensure you have added it to Repository Secrets.")
+            print("ERROR: OPENAI_API_KEY is not set. If running in GitHub Actions, ensure you have added it to Repository Secrets.")
             return None
 
-        client = Groq(api_key=api_key)
+        client = OpenAI(api_key=api_key)
 
         # 4. Build and send prompt
         # Truncate full_text to avoid token limit issues
@@ -145,7 +145,7 @@ Article text:
                     "content": user_message,
                 }
             ],
-            model="llama-3.3-70b-versatile",
+            model="GPT-5.4 nano",
             response_format={"type": "json_object"},
         )
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     demonstrate that the sweet spot is accessible gameplay married to aspirational progression.
     """
 
-    print("Testing Groq analysis...")
+    print("Testing OpenAI analysis...")
     result = analyze_article("test-article-001", sample_title, sample_text)
     if result:
         print(f"Summary: {result['summary']}")
