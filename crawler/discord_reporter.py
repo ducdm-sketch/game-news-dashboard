@@ -32,26 +32,56 @@ def send_digest(articles: list) -> None:
         
         # 2. Send one embed per article
         for article in articles:
-            article_id = article.get("id", "unknown")
+            ai_data = article.get("_ai_data")
             title = article.get("title", "Untitled")
             source = article.get("source_name", "Unknown Source")
             url = article.get("original_url", "#")
-            summary = article.get("ai_summary", "No summary provided.")
-            tags = article.get("genre_tags", [])
             
-            # Link title directly to the original article
-            article_link = url
+            # English summary and tags for the main description/footer
+            summary_en = article.get("ai_summary", "No summary provided.")
+            tags = article.get("genre_tags", [])
             
             embed = {
                 "title": title,
-                "url": article_link,
-                "description": f"**Source:** {source}",
+                "url": url,
+                "description": f"**Source:** {source}\n\n{summary_en}",
                 "color": 3447003, # Deep Blue
                 "fields": [],
                 "footer": {
-                    "text": f"Original: {url}"
+                    "text": f"Tags: {', '.join(tags)}" if tags else ""
                 }
             }
+
+            # 3. Add Vietnamese Section if AI data is available
+            if ai_data:
+                viet_summary = ai_data.get("viet_summary")
+                if viet_summary:
+                    embed["fields"].append({
+                        "name": "🇻🇳 Tóm tắt nhanh",
+                        "value": viet_summary,
+                        "inline": False
+                    })
+                
+                action_items = ai_data.get("viet_action_items", [])
+                if action_items and not ai_data.get("is_pure_news"):
+                    items_text = ""
+                    for item in action_items:
+                        emoji = "🔴" if item.get("uu_tien") == "cao" else "🟡" if item.get("uu_tien") == "trung_binh" else "🟢"
+                        items_text += f"{emoji} **[{item.get('nhom')}]** {item.get('viec_can_lam')}\n"
+                        items_text += f"> *Lý do:* {item.get('ly_do')}\n\n"
+                    
+                    if items_text:
+                        embed["fields"].append({
+                            "name": "🚀 Hành động khuyến nghị",
+                            "value": items_text.strip(),
+                            "inline": False
+                        })
+                elif ai_data.get("is_pure_news"):
+                    embed["fields"].append({
+                        "name": "ℹ️ Phân loại",
+                        "value": "Bản tin thời sự (Pure News) — Không có hành động khuyến nghị.",
+                        "inline": False
+                    })
 
             payload = {"embeds": [embed]}
             response = requests.post(webhook_url, json=payload, timeout=15)

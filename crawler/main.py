@@ -11,7 +11,7 @@ from crawler.feed_reader import fetch_new_articles
 from crawler.homepage_scraper import scrape_new_articles
 from crawler.article_extractor import extract_article
 from crawler.image_uploader import upload_images
-# from crawler.ai_analyzer import analyze_article, _get_call_count
+from crawler.ai_analyzer import analyze_article, _get_call_count
 from crawler.cache import mark_seen
 from crawler.discord_reporter import send_digest, send_status_report
 
@@ -120,8 +120,9 @@ def run_crawler():
                 if cover_image_path and cover_image_path in url_mapping:
                     r2_cover_url = url_mapping[cover_image_path]
                 
-                # f. AI Analysis (DISABLED)
-                # ai_data = analyze_article(article_id, title, full_text)
+                # f. AI Analysis
+                full_text = "\n".join(full_text_parts)
+                ai_data = analyze_article(article_id, title, full_text)
                 
                 # Prepare DB Record
                 db_article = {
@@ -134,11 +135,11 @@ def run_crawler():
                     "crawled_date": datetime.utcnow().isoformat()
                 }
                 
-                # if ai_data:
-                #     db_article["ai_summary"] = ai_data.get("summary")
-                #     db_article["genre_tags"] = ai_data.get("genre_tags", [])
-                #     db_article["key_takeaways"] = ai_data.get("key_takeaways", [])
-                #     db_article["entities_mentioned"] = ai_data.get("entities", {})
+                if ai_data:
+                    db_article["ai_summary"] = ai_data.get("summary")
+                    db_article["genre_tags"] = ai_data.get("genre_tags", [])
+                    db_article["key_takeaways"] = ai_data.get("key_takeaways", [])
+                    db_article["entities_mentioned"] = ai_data.get("entities", {})
                 
                 # g. Save Article to Supabase (upsert to handle any race conditions)
                 supabase.table("articles").upsert(db_article, on_conflict="original_url").execute()
@@ -162,6 +163,7 @@ def run_crawler():
                 mark_seen(url)
                 
                 # j. Success
+                db_article["_ai_data"] = ai_data  # temporary in-memory field, not written to DB
                 successfully_processed.append(db_article)
                 sources_succeeded.add(source_name)
                 print(f"Successfully processed: {title}")
@@ -182,7 +184,7 @@ def run_crawler():
         send_digest(successfully_processed)
 
         # 5. CRAWL RUN LOG
-        ai_calls = 0
+        ai_calls = _get_call_count()
             
         run_log = {
             "run_timestamp": run_timestamp,
