@@ -11,17 +11,61 @@ load_dotenv()
 # Configuration
 AI_CALL_COUNT_FILE = os.path.join(os.getcwd(), "tmp", "ai_call_count.txt")
 MAX_AI_CALLS = 50
-REQUIRED_FIELDS = {"summary", "key_takeaways", "entities", "genre_tags"}
+REQUIRED_FIELDS = {"summary", "key_takeaways", "genre_tags", "entities", "is_pure_news", "viet_summary", "viet_action_items"}
 VALID_GENRE_TAGS = {
     "Hyper-Casual", "Hybrid-Casual", "Casual", "Puzzle", "UA",
     "Monetization", "Market Data", "Game Design", "Industry News", "Business"
 }
 
-SYSTEM_PROMPT = """You are a senior analyst for a mobile game development studio. Your job is to extract factual information ONLY from the article provided. You must follow these strict rules:
-- NEVER invent, infer, or assume any facts not explicitly stated in the article text
-- If a field cannot be filled from the article text, use an empty array [] or the string 'Not specified'
-- Do NOT pad key_takeaways with generic advice — only include insights directly supported by the article
-- genre_tags must only use tags that genuinely apply to the article content"""
+SYSTEM_PROMPT = """
+You are a senior mobile game industry analyst working internally for Pixon Game Studio — a mobile game developer and publisher based in Hanoi, Vietnam, under FPT Corporation. Pixon focuses on Hyper-casual, Hybrid-casual, Casual, and Puzzle mobile games, and both self-develops and publishes for indie teams.
+
+Internal teams reading this analysis:
+- Game Research: genre trends, new mechanics, top charts, emerging games
+- UA: CPI benchmarks, creative formats, platform policy, SKAdNetwork/ATT, ROAS
+- Monetization: ad revenue, IAP meta, rewarded video, mediation, eCPM, LiveOps
+- Game Design: retention mechanics, core loops, progression systems, first-hour UX
+
+Competitors to flag: Voodoo, Kwalee, SayGames, Miniclip, Zeptolab, Amanotes.
+Key markets: Global (priority: US, EU) and Southeast Asia (especially Vietnam).
+
+YOUR TASK:
+Analyze the article provided and return a single JSON object with two sections:
+
+SECTION 1 — ENGLISH (stored in database):
+These fields must be in English only. Keep all industry terms in English: retention, revenue, CPI, ROAS, eCPM, DAU, MAU, LTV, IAP, D7/D30, churn, mediation, LiveOps, playable ads, soft launch, meta-game, etc.
+
+SECTION 2 — VIETNAMESE DISPLAY (sent to Discord):
+A human-readable narrative in Vietnamese for the team's daily digest. Keep all industry jargon, metrics, game names, studio names, and platform names in English within the Vietnamese text. Do NOT translate: retention, revenue, CPI, ROAS, eCPM, DAU, LTV, IAP, D7, D30, LiveOps, meta-game, soft launch, top chart, benchmark, mediation, rewarded video, playable ads, core loop, hyper-casual, hybrid-casual.
+
+IMPORTANT RULES:
+- Never invent facts, numbers, or names not explicitly stated in the article.
+- If the article is pure news reporting (a launch announcement, acquisition, earnings report with no analysis), set "is_pure_news": true — in this case, "key_takeaways" should be [] and "viet_action_items" should be [] (no recommendations for pure news).
+- If the article contains analysis, benchmarks, case studies, or actionable data, set "is_pure_news": false and populate all fields fully.
+- Each key_takeaway and viet_action_item must cite a specific number, game name, or quote from the article.
+
+RETURN THIS EXACT JSON SCHEMA:
+{
+  "summary": "<one sentence in English: WHO did WHAT and WHY it matters>",
+  "key_takeaways": ["<specific English insight with cited fact>", "<...>", "<...>"],
+  "genre_tags": ["<only from: Hyper-Casual, Hybrid-Casual, Casual, Puzzle, UA, Monetization, Market Data, Game Design, Industry News, Business>"],
+  "entities": {
+    "games": ["<exact game titles mentioned>"],
+    "studios": ["<exact studio/company names mentioned>"],
+    "metrics": ["<exact numeric data as written, e.g. 'D7 retention 34%', 'CPI $1.20'>"]
+  },
+  "is_pure_news": true | false,
+  "viet_summary": "<1-2 câu tóm tắt bằng tiếng Việt, giữ nguyên jargon tiếng Anh>",
+  "viet_action_items": [
+    {
+      "viec_can_lam": "<hành động cụ thể>",
+      "ly_do": "<dẫn chứng số liệu hoặc ví dụ từ bài viết>",
+      "nhom": "UA | Monetization | Game Design | Game Research",
+      "uu_tien": "cao | trung_binh | thap"
+    }
+  ]
+}
+"""
 
 def _get_call_count() -> int:
     """Reads the current AI call count from the tmp file."""
@@ -78,10 +122,15 @@ def _parse_ai_response(raw_text: str) -> dict | None:
         print(f"AI response missing required fields: {missing}")
         return None
 
-    # Validate key_takeaways has exactly 3 items
-    if not isinstance(parsed.get("key_takeaways"), list) or len(parsed["key_takeaways"]) != 3:
-        print(f"key_takeaways must be a list of exactly 3 items.")
+    # Validate key_takeaways length (0-5 items)
+    if not isinstance(parsed.get("key_takeaways"), list) or not (0 <= len(parsed["key_takeaways"]) <= 5):
+        print(f"key_takeaways must be a list of 0-5 items.")
         return None
+
+    # Check is_pure_news constraint: if True, action items MUST be empty
+    if parsed.get("is_pure_news") is True and parsed.get("viet_action_items"):
+        print(f"Warning: is_pure_news is True but viet_action_items is not empty. Clearing it.")
+        parsed["viet_action_items"] = []
 
     # Filter genre_tags to only valid values
     parsed["genre_tags"] = [t for t in parsed.get("genre_tags", []) if t in VALID_GENRE_TAGS]
@@ -116,20 +165,7 @@ def analyze_article(article_id: str, title: str, full_text: str, image_paths: li
         # 4. Build and send prompt
         # Truncate full_text to avoid token limit issues
         truncated_text = full_text[:12000] if len(full_text) > 12000 else full_text
-        user_message = f"""Analyze the following article and return a JSON object with exactly these fields:
-
-- summary: One sentence. Must include the WHO (company/game), WHAT (the key event or finding), and WHY it matters. Use only facts from the article.
-
-- key_takeaways: Array of exactly 3 strings. Each must be a specific, actionable insight for a mobile game developer. Each must cite a specific fact, number, or example from the article. Never write generic advice.
-
-- entities: Object with three arrays:
-  - games: exact game titles mentioned in the article
-  - studios: exact company or studio names mentioned
-  - metrics: exact numeric data mentioned (e.g. 'D7 retention 34%', 'CPI $1.20', 'DAU 2.3M') — copy the numbers exactly as written
-
-- genre_tags: Array using only these tags where genuinely applicable: Hyper-Casual, Hybrid-Casual, Casual, Puzzle, UA, Monetization, Market Data, Game Design, Industry News, Business
-
-Article title: {title}
+        user_message = f"""Article title: {title}
 Article text:
 {truncated_text}"""
 
@@ -145,7 +181,7 @@ Article text:
                     "content": user_message,
                 }
             ],
-            model="GPT-5.4 nano",
+            model="gpt-5.4-nano",
             response_format={"type": "json_object"},
         )
 
@@ -179,12 +215,13 @@ if __name__ == "__main__":
     demonstrate that the sweet spot is accessible gameplay married to aspirational progression.
     """
 
-    print("Testing OpenAI analysis...")
+    print("Testing OpenAI analysis (Pixon Analyst)...")
     result = analyze_article("test-article-001", sample_title, sample_text)
     if result:
-        print(f"Summary: {result['summary']}")
-        print(f"Key Takeaways: {result['key_takeaways']}")
-        print(f"Genre Tags: {result['genre_tags']}")
-        print(f"Entities: {result['entities']}")
+        print(f"Summary (EN): {result.get('summary')}")
+        print(f"Summary (VN): {result.get('viet_summary')}")
+        print(f"Is Pure News: {result.get('is_pure_news')}")
+        print(f"Action Items: {len(result.get('viet_action_items', []))}")
+        print(f"Genre Tags: {result.get('genre_tags')}")
     else:
         print("Analysis returned None (check credentials or cache hit).")
