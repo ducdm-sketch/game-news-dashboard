@@ -57,29 +57,31 @@ def send_digest(articles: list) -> None:
                 viet_summary = ai_data.get("viet_summary")
                 if viet_summary:
                     embed["fields"].append({
-                        "name": "🇻🇳 Tóm tắt nhanh",
+                        "name": "📋 Tóm tắt",
                         "value": viet_summary,
                         "inline": False
                     })
                 
+                is_pure_news = ai_data.get("is_pure_news", True)
                 action_items = ai_data.get("viet_action_items", [])
-                if action_items and not ai_data.get("is_pure_news"):
+
+                if is_pure_news is False and action_items:
                     items_text = ""
                     for item in action_items:
-                        emoji = "🔴" if item.get("uu_tien") == "cao" else "🟡" if item.get("uu_tien") == "trung_binh" else "🟢"
-                        items_text += f"{emoji} **[{item.get('nhom')}]** {item.get('viec_can_lam')}\n"
-                        items_text += f"> *Lý do:* {item.get('ly_do')}\n\n"
+                        priority = item.get("uu_tien", "thap")
+                        emoji = "🔴" if priority == "cao" else "🟡" if priority == "trung_binh" else "🟢"
+                        items_text += f"{emoji} {item.get('viec_can_lam')}\n"
                     
                     if items_text:
                         embed["fields"].append({
-                            "name": "🚀 Hành động khuyến nghị",
+                            "name": "✅ Action Items",
                             "value": items_text.strip(),
                             "inline": False
                         })
-                elif ai_data.get("is_pure_news"):
+                elif is_pure_news is True:
                     embed["fields"].append({
-                        "name": "ℹ️ Phân loại",
-                        "value": "Bản tin thời sự (Pure News) — Không có hành động khuyến nghị.",
+                        "name": "📰 Tin tức",
+                        "value": "Bản tin thời sự (Pure News)",
                         "inline": False
                     })
 
